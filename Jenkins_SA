@@ -38,8 +38,7 @@ pipeline {
                                 artifactId: 'spring-petclinic', 
                                 classifier: '', 
                                 file: 'target/petclinic.war', 
-                                type: 'war'
-                            ]], 
+                                type: 'war']], 
                             credentialsId: 'nexusCred', 
                             groupId: 'org.springframework.samples', 
                             nexusUrl: '3.135.223.138:8081/', 
