@@ -1,0 +1,67 @@
+pipeline {
+	agent any
+	tools {
+		maven 'M3.8'
+	}
+	stages {
+		stage('Checkout') {
+			steps {
+				git 'https://github.com/devopskphb/petclinic.git'
+			}
+		}
+		stage('Build') {
+			steps {
+				sh "mvn clean package"
+			}
+		}
+		stage('Post Build Actions') {
+			parallel {
+				stage('Archive Artifacts') {
+					steps {
+						archiveArtifacts artifacts: "target/*.?ar", followSymlinks: false
+					}
+				}
+				stage('Junit results') {
+					steps {
+						junit "target/surefire-reports/*.xml"
+					}
+				}
+                stage('Nexus Uploader') {
+                    steps {
+                        nexusArtifactUploader (
+                            artifacts: [[artifactId: 'spring-petclinic', classifier: '', file: 'target/petclinic.war', type: 'war']], 
+                            credentialsId: 'nexusCred', 
+                            groupId: 'org.springframework.samples', 
+                            nexusUrl: '18.223.143.57:8081', 
+                            nexusVersion: 'nexus3', 
+                            protocol: 'http', 
+                            repository: 'maven-releases', 
+                            version: "4.2.${BUILD_NUMBER}"
+                        )
+                    }
+                }
+            }
+		}
+	}
+	post {
+		success {
+			notify('Success',"good")
+		}
+		failure {
+			notify("Failed","#FF0000")
+		}
+		always {
+			notify('Started',"#FFA500")
+		}
+	}
+}
+
+def notify(status,color) {
+	emailext (
+		to: 'devops.kphb@gmail.com', 
+		subject: "Job ${status}: ${env.JOB_NAME}[${env.BUILD_NUMBER}]", 
+		body: """<p>${status}: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+        <p>Check console output at <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>"""
+	)
+	slackSend color: "${color}", message: "Job ${status}: ${env.JOB_NAME}[${env.BUILD_NUMBER}]"
+}
